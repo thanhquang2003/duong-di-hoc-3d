@@ -16,7 +16,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#9ec7dc;font-family:Ar
 <body>
 <div id="hud"><b>ĐƯỜNG ĐI HỌC</b><br><span id="place">Nhà trọ số 1</span><br><span id="distance">0 m</span></div>
 <div id="help">W/S: Tiến / lùi · A/D: Rẽ trái/phải · Kéo chuột hoặc click để khóa chuột rồi di chuyển: Nhìn · Esc: Thả chuột · Shift: Tăng tốc · Space: Phanh</div>
-<div id="start"><div><h1>Hành trình đến trường</h1><p>Đi xe đạp theo tuyến đường ngắn; có vạch kẻ đường và giới hạn mặt đường</p><button id="play">BẮT ĐẦU</button></div></div>
+<div id="start"><div><h1>Hành trình đến trường</h1><p>Lộ trình: rẽ trái 200m → rẽ trái 300m → rẽ phải 500m → rẽ trái 400m</p><button id="play">BẮT ĐẦU</button></div></div>
 <canvas id="game"></canvas>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
@@ -31,22 +31,21 @@ const roadMat=mat(0x55585a),lineMat=mat(0xe8e0c8),wallMat=mat(0xd2c5a9),roofMat=
 function road(x,z,w,d){let m=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),roadMat);m.position.set(x,0,z);m.receiveShadow=true;scene.add(m)}
 function building(x,z,w,d,h,color=0xe1d2b8){let g=new THREE.Group();let b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));b.position.y=h/2;b.castShadow=true;b.receiveShadow=true;g.add(b);let r=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.72,.9,4),roofMat);r.position.y=h+.45;r.rotation.y=Math.PI/4;g.add(r);g.position.set(x,0,z);scene.add(g);return g}
 function tree(x,z){let g=new THREE.Group();let t=new THREE.Mesh(new THREE.CylinderGeometry(.18,.28,2,7),mat(0x765034));t.position.y=1;g.add(t);let l=new THREE.Mesh(new THREE.SphereGeometry(1.35,8,7),green);l.position.y=2.5;l.scale.set(1,1.15,1);g.add(l);g.position.set(x,0,z);scene.add(g)}
-// Short, connected route with four clear road sections.
-const roadWidth=11;
-road(0,37,roadWidth,42);                 // from boarding-house gate
-road(-27,58,56,roadWidth);               // turn left
-road(-55,98,roadWidth,82);               // turn right
-road(-82,139,56,roadWidth);              // turn left to school
-// Lane markings: dashed center line and solid white road edges.
-function laneLine(x,z,w,d,color=0xe9e5d8){const m=new THREE.Mesh(new THREE.BoxGeometry(w,.035,d),mat(color));m.position.set(x,.085,z);scene.add(m)}
-for(let z=19;z<55;z+=7)laneLine(0,z,.18,3.2,0xf2d35b);
-for(let x=-53;x<0;x+=7)laneLine(x,58,3.2,.18,0xf2d35b);
-for(let z=62;z<136;z+=7)laneLine(-55,z,.18,3.2,0xf2d35b);
-for(let x=-108;x< -3;x+=7)laneLine(x,139,3.2,.18,0xf2d35b);
-for(let z=18;z<55;z+=1){laneLine(-5.1,z,.12,1);laneLine(5.1,z,.12,1)}
-for(let x=-53;x<0;x+=1){laneLine(x,52.9,1,.12);laneLine(x,63.1,1,.12)}
-for(let z=62;z<136;z+=1){laneLine(-60.1,z,.12,1);laneLine(-49.9,z,.12,1)}
-for(let x=-108;x< -3;x+=1){laneLine(x,133.9,1,.12);laneLine(x,144.1,1,.12)}
+// Route follows the spoken directions: leave the gate; turn left 200m;
+// turn left 300m to the T-junction/shop; turn right; go 500m to cemetery;
+// turn left 400m to school. Distances are compressed to 10% for gameplay.
+const roadWidth=11, scale=0.1;
+const route=[{x:0,z:18},{x:-20,z:18},{x:-20,z:-12},{x:-70,z:-12},{x:-70,z:-52}];
+road(0,21,roadWidth,16);
+road(-10,18,20,roadWidth);
+road(-20,3,roadWidth,30);
+road(-45,-12,50,roadWidth);
+road(-70,-32,roadWidth,40);
+// Continuous center markings and solid edge lines on every road leg.
+function laneLine(x,z,w,d,color=0xe9e5d8){const m=new THREE.Mesh(new THREE.BoxGeometry(w,.04,d),mat(color));m.position.set(x,.09,z);scene.add(m)}
+function markVertical(x,z1,z2){for(let z=z1;z<=z2;z+=3.2)laneLine(x,z,.18,1.6,0xf2d35b);for(let z=z1;z<=z2;z+=.8){laneLine(x-5.05,z,.12,.55);laneLine(x+5.05,z,.12,.55)}}
+function markHorizontal(x1,x2,z){for(let x=x1;x<=x2;x+=3.2)laneLine(x,z,1.6,.18,0xf2d35b);for(let x=x1;x<=x2;x+=.8){laneLine(x,z-5.05,.55,.12);laneLine(x,z+5.05,.55,.12)}}
+markVertical(0,14,25);markHorizontal(-20,0,18);markVertical(-20,-12,18);markHorizontal(-70,-20,-12);markVertical(-70,-52,-12);
 // Boarding-house compound: House no. 1, broad gate, yard, parking, 9 rental rooms.
 const compound=new THREE.Group();compound.position.set(0,0,0);scene.add(compound);
 function wall(x,z,w,d,h=2.3){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMat);o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;compound.add(o)}
@@ -63,23 +62,25 @@ for(let i=0;i<9;i++){let x=-10+i*2.5;let room=new THREE.Mesh(new THREE.BoxGeomet
 let canopy=new THREE.Mesh(new THREE.BoxGeometry(8,.2,5),mat(0x777d7e));canopy.position.set(0,3,4);compound.add(canopy);for(let x of [-3,3])for(let z of [2,6]){let post=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,3),mat(0x55585a));post.position.set(x,1.5,z);compound.add(post)}
 function bike(x,z){let g=new THREE.Group();for(let dx of [-.65,.65]){let wheel=new THREE.Mesh(new THREE.TorusGeometry(.38,.045,8,20),mat(0x222222));wheel.rotation.y=Math.PI/2;wheel.position.set(dx,.45,0);g.add(wheel)}let bar=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.25),mat(0x333333));bar.rotation.z=Math.PI/2;bar.position.y=.85;g.add(bar);g.position.set(x,0,z);compound.add(g)}
 for(let i=0;i<5;i++)bike(-3+i*1.5,5);
-// Nearby rural homes and trees along the route
-for(let z=28;z<145;z+=28){building(17,z,7,7,3.6,0xd9c6a6);tree(25,z-8)}
-for(let x=-105;x< -5;x+=28){building(x,157,8,7,4,0xe4d5b8);tree(x+8,166)}
-// Shop at the T-junction and skewers stall
-building(-27,48,8,6,3.5,0xe8cfa7);let sign=new THREE.Mesh(new THREE.BoxGeometry(7,.8,.15),mat(0xf4df9d));sign.position.set(-27,3,45);scene.add(sign);
-// Cemetery entrance near the end of the long stretch
-building(-55,126,8,6,3.5,0xbab5a4);let gate=new THREE.Mesh(new THREE.BoxGeometry(8,2.5,.25),mat(0x444444));gate.position.set(-55,1.25,130);scene.add(gate);
-// School at destination
-building(-110,153,20,10,6,0xe8d8b7);let schoolSign=new THREE.Mesh(new THREE.BoxGeometry(13,1,.2),mat(0xe8d5a0));schoolSign.position.set(-110,4.5,147);scene.add(schoolSign);
+// Houses and trees are placed beside the road; never on the carriageway.
+for(let z=29;z< -50;z-=18){building(12,z,6,6,3.2,0xd9c6a6);tree(19,z+5)}
+for(let x=-5;x> -72;x-=18){building(x,30,7,6,3.5,0xe4d5b8);tree(x-7,35)}
+for(let z=-16;z>=-48;z-=16){building(-83,z,7,6,3.4,0xd9c6a6);tree(-91,z-5)}
+// Chú Ước's drinks shop and skewers stall stand outside the T-junction.
+building(-29,-1,6,5,3.2,0xe8cfa7);let sign=new THREE.Mesh(new THREE.BoxGeometry(5,.65,.15),mat(0xf4df9d));sign.position.set(-29,2.8,-3.4);scene.add(sign);
+building(-12,-3,4,4,2.4,0xc9a47b);
+// Cemetery entrance is beside the road near the end of the 500m stretch.
+building(-83,-12,6,5,3.2,0xbab5a4);let gate=new THREE.Mesh(new THREE.BoxGeometry(.25,2.5,8),mat(0x444444));gate.position.set(-75,1.25,-12);scene.add(gate);
+// School is beside the final road leg, beyond the left turn.
+building(-70,-65,18,9,5.5,0xe8d8b7);let schoolSign=new THREE.Mesh(new THREE.BoxGeometry(12,.8,.2),mat(0xe8d5a0));schoolSign.position.set(-70,4.2,-60);scene.add(schoolSign);
 // Player bicycle cockpit and camera
 const cockpit=new THREE.Group();camera.add(cockpit);scene.add(camera);let handle=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.4),mat(0x222222));handle.rotation.z=Math.PI/2;handle.position.set(0,-.62,-1.1);cockpit.add(handle);for(let x of [-.7,.7]){let grip=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.3),mat(0x111111));grip.rotation.z=Math.PI/2;grip.position.set(x,-.62,-1.1);cockpit.add(grip)}let stem=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.65),mat(0x333333));stem.position.set(0,-.85,-1.1);cockpit.add(stem);
-let pos=new THREE.Vector3(0,1.65,17),yaw=Math.PI,speed=0,keys={},distance=0,started=false;
-const roadSegments=[{x1:0,z1:17,x2:0,z2:58},{x1:0,z1:58,x2:-55,z2:58},{x1:-55,z1:58,x2:-55,z2:139},{x1:-55,z1:139,x2:-110,z2:139}];
-function onRoad(x,z){return roadSegments.some(r=>{const minX=Math.min(r.x1,r.x2)-roadWidth/2+0.8,maxX=Math.max(r.x1,r.x2)+roadWidth/2-0.8,minZ=Math.min(r.z1,r.z2)-roadWidth/2+0.8,maxZ=Math.max(r.z1,r.z2)+roadWidth/2-0.8;return x>=minX&&x<=maxX&&z>=minZ&&z<=maxZ})}camera.position.copy(pos);camera.rotation.order='YXZ';
+let pos=new THREE.Vector3(0,1.65,18),yaw=0,speed=0,keys={},distance=0,started=false;
+const roadSegments=[{x1:0,z1:18,x2:0,z2:21},{x1:0,z1:18,x2:-20,z2:18},{x1:-20,z1:18,x2:-20,z2:-12},{x1:-20,z1:-12,x2:-70,z2:-12},{x1:-70,z1:-12,x2:-70,z2:-52}];
+function onRoad(x,z){return roadSegments.some(r=>{const minX=Math.min(r.x1,r.x2)-roadWidth/2+0.5,maxX=Math.max(r.x1,r.x2)+roadWidth/2-0.5,minZ=Math.min(r.z1,r.z2)-roadWidth/2+0.5,maxZ=Math.max(r.z1,r.z2)+roadWidth/2-0.5;return x>=minX&&x<=maxX&&z>=minZ&&z<=maxZ})}camera.position.copy(pos);camera.rotation.order='YXZ';
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=true;if(['w','a','s','d',' '].includes(k))e.preventDefault()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);addEventListener('blur',()=>{keys={}});let dragging=false,lastX=0,lastY=0,pitch=0;canvas.addEventListener('click',()=>{if(started&&document.pointerLockElement!==canvas&&canvas.requestPointerLock)canvas.requestPointerLock()});addEventListener('mousedown',e=>{if(document.pointerLockElement!==canvas){dragging=true;lastX=e.clientX;lastY=e.clientY}});addEventListener('mouseup',()=>dragging=false);addEventListener('mousemove',e=>{if(!started)return;const dx=document.pointerLockElement===canvas?e.movementX:(dragging?e.clientX-lastX:0);const dy=document.pointerLockElement===canvas?e.movementY:(dragging?e.clientY-lastY:0);if(dx||dy){yaw-=dx*.003;pitch=Math.max(-.7,Math.min(.7,pitch-dy*.002));camera.rotation.x=pitch}lastX=e.clientX;lastY=e.clientY});
 document.querySelector('#play').onclick=()=>{started=true;document.querySelector('#start').style.display='none'};
-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);if(started){let accel=keys['w']?12:keys['s']?-8:0;speed+=accel*dt;speed*=keys[' ']?.88:.985;speed=Math.max(-5,Math.min(keys['shift']?24:13,speed));{const steer=(keys['a']?1:0)-(keys['d']?1:0);if(steer)yaw+=steer*dt*(.65+Math.min(Math.abs(speed),13)*.055)*(speed<0?-1:1);let old=pos.clone();let nx=pos.x-Math.sin(yaw)*speed*dt,nz=pos.z-Math.cos(yaw)*speed*dt;if(onRoad(nx,nz)){pos.x=nx;pos.z=nz;distance+=pos.distanceTo(old)}else{speed=0}camera.position.copy(pos);camera.rotation.y=yaw;document.querySelector('#distance').textContent=Math.round(distance)+' m';let p='Đường đến trường';if(pos.z<55&&pos.z>10)p='Rời nhà trọ số 1';else if(pos.x> -55&&pos.z>=52)p='Rẽ trái – qua cửa hàng chú Ước';else if(pos.x< -48&&pos.z<130)p='Rẽ phải – đường đến nghĩa trang';else if(pos.z>=130&&pos.x> -110)p='Rẽ trái – đến trường';else if(pos.x<=-100)p='Trường học';document.querySelector('#place').textContent=p}}
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);if(started){let accel=keys['w']?12:keys['s']?-8:0;speed+=accel*dt;speed*=keys[' ']?.88:.985;speed=Math.max(-5,Math.min(keys['shift']?24:13,speed));{const steer=(keys['a']?1:0)-(keys['d']?1:0);if(steer)yaw+=steer*dt*(.65+Math.min(Math.abs(speed),13)*.055)*(speed<0?-1:1);let old=pos.clone();let nx=pos.x-Math.sin(yaw)*speed*dt,nz=pos.z-Math.cos(yaw)*speed*dt;if(onRoad(nx,nz)){pos.x=nx;pos.z=nz;distance+=pos.distanceTo(old)}else{speed=0}camera.position.copy(pos);camera.rotation.y=yaw;document.querySelector('#distance').textContent=Math.round(distance)+' m';let p='Rời nhà trọ số 1';if(pos.x< -3&&pos.z>12)p='Rẽ trái – đi khoảng 200m';else if(pos.x< -15&&pos.z> -10)p='Rẽ trái – đi khoảng 300m đến cửa hàng chú Ước';else if(pos.z< -9&&pos.x> -68)p='Rẽ phải – đi thẳng khoảng 500m';else if(pos.x< -65&&pos.z> -50)p='Rẽ trái – đi khoảng 400m đến trường';else if(pos.z<=-50)p='Đã đến trường';document.querySelector('#place').textContent=p}}
 renderer.render(scene,camera)}animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 </script>
 </body>
