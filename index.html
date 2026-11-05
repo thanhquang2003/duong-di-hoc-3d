@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đường đi học – Game 3D</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#9ec7dc;font-family:Arial,sans-serif}
+#game{display:block;width:100%;height:100%}
+#hud{position:fixed;top:12px;left:12px;color:#fff;background:#0009;padding:12px 16px;border-radius:10px;z-index:2;line-height:1.5;max-width:320px}
+#help{position:fixed;bottom:12px;left:12px;color:#fff;background:#0009;padding:10px 14px;border-radius:10px;z-index:2;font-size:13px}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0008;z-index:3;color:white;text-align:center}
+#start button{padding:14px 24px;border:0;border-radius:10px;font-size:18px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="hud"><b>ĐƯỜNG ĐI HỌC</b><br><span id="place">Nhà trọ số 1</span><br><span id="distance">0 m</span></div>
+<div id="help">W/S: Tiến / lùi · A/D: Rẽ · Chuột: Nhìn · Shift: Tăng tốc · Space: Phanh</div>
+<div id="start"><div><h1>Hành trình đến trường</h1><p>Đi xe đạp từ nhà trọ số 1 đến trường</p><button id="play">BẮT ĐẦU</button></div></div>
+<canvas id="game"></canvas>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const canvas=document.querySelector('#game');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ec7dc);scene.fog=new THREE.Fog(0x9ec7dc,90,420);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000);
+scene.add(new THREE.HemisphereLight(0xffffff,0x657b48,2));const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-40,80,30);sun.castShadow=true;scene.add(sun);
+const mat=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.9});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),mat(0x719b50));ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=true;scene.add(ground);
+const roadMat=mat(0x55585a),lineMat=mat(0xe8e0c8),wallMat=mat(0xd2c5a9),roofMat=mat(0x9a4932),houseMat=mat(0xe2d1ae),green=mat(0x397b36);
+function road(x,z,w,d){let m=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),roadMat);m.position.set(x,0,z);m.receiveShadow=true;scene.add(m)}
+function building(x,z,w,d,h,color=0xe1d2b8){let g=new THREE.Group();let b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));b.position.y=h/2;b.castShadow=true;b.receiveShadow=true;g.add(b);let r=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.72,.9,4),roofMat);r.position.y=h+.45;r.rotation.y=Math.PI/4;g.add(r);g.position.set(x,0,z);scene.add(g);return g}
+function tree(x,z){let g=new THREE.Group();let t=new THREE.Mesh(new THREE.CylinderGeometry(.18,.28,2,7),mat(0x765034));t.position.y=1;g.add(t);let l=new THREE.Mesh(new THREE.SphereGeometry(1.35,8,7),green);l.position.y=2.5;l.scale.set(1,1.15,1);g.add(l);g.position.set(x,0,z);scene.add(g)}
+// Road route: 200m straight; left 300m; right 500m; left 400m. Scaled for playable scene.
+road(0,-100,12,220);road(-150,-215,310,12);road(100,-620,12,800);road(-100,-1020,410,12);
+for(let z=-205;z>-215;z-=12){let m=new THREE.Mesh(new THREE.BoxGeometry(.18,.03,5),lineMat);m.position.set(0,.08,z);scene.add(m)}
+// Boarding-house compound: House no. 1, broad gate, yard, parking, 9 rental rooms.
+const compound=new THREE.Group();compound.position.set(0,0,0);scene.add(compound);
+function wall(x,z,w,d,h=2.3){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wallMat);o.position.set(x,h/2,z);o.castShadow=true;o.receiveShadow=true;compound.add(o)}
+wall(-13,-1,.6,27);wall(13,-1,.6,27);wall(0,-14,26,.6);wall(-8,12,10,.6);wall(8,12,10,.6);
+// Gate pillars and open gate leaves
+for(const x of [-3.2,3.2]){let p=new THREE.Mesh(new THREE.BoxGeometry(.7,2.7,.7),mat(0xb7a58b));p.position.set(x,1.35,12);compound.add(p)}
+for(const x of [-2.2,2.2]){let leaf=new THREE.Mesh(new THREE.BoxGeometry(2,.08,1.8),mat(0x4c4033));leaf.position.set(x,1,12);leaf.rotation.y=x<0?-.45:.45;compound.add(leaf)}
+// Courtyard surface and main house at rear
+let yard=new THREE.Mesh(new THREE.PlaneGeometry(25,25),mat(0xb9a77f));yard.rotation.x=-Math.PI/2;yard.position.set(0,.015,-1);compound.add(yard);
+let main=new THREE.Mesh(new THREE.BoxGeometry(10,4,5),houseMat);main.position.set(0,2,-9);main.castShadow=true;compound.add(main);let mr=new THREE.Mesh(new THREE.ConeGeometry(7,2,4),roofMat);mr.position.set(0,5,-9);mr.rotation.y=Math.PI/4;compound.add(mr);
+// Nine rental rooms in a row, each with door and window
+for(let i=0;i<9;i++){let x=-10+i*2.5;let room=new THREE.Mesh(new THREE.BoxGeometry(2.25,2.8,4),mat(i%2?0xd8c9ae:0xcdbb9e));room.position.set(x,1.4,-19);room.castShadow=true;compound.add(room);let roof=new THREE.Mesh(new THREE.BoxGeometry(2.4,.18,4.2),roofMat);roof.position.set(x,2.85,-19);compound.add(roof);let door=new THREE.Mesh(new THREE.BoxGeometry(.55,1.5,.08),mat(0x694b32));door.position.set(x, .78,-16.96);compound.add(door);let win=new THREE.Mesh(new THREE.BoxGeometry(.65,.65,.08),mat(0x8fc4d2));win.position.set(x+.65,1.8,-16.95);compound.add(win)}
+// Parking canopy and stylized parked bicycles/motorbikes
+let canopy=new THREE.Mesh(new THREE.BoxGeometry(8,.2,5),mat(0x777d7e));canopy.position.set(0,3,4);compound.add(canopy);for(let x of [-3,3])for(let z of [2,6]){let post=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,3),mat(0x55585a));post.position.set(x,1.5,z);compound.add(post)}
+function bike(x,z){let g=new THREE.Group();for(let dx of [-.65,.65]){let wheel=new THREE.Mesh(new THREE.TorusGeometry(.38,.045,8,20),mat(0x222222));wheel.rotation.y=Math.PI/2;wheel.position.set(dx,.45,0);g.add(wheel)}let bar=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.25),mat(0x333333));bar.rotation.z=Math.PI/2;bar.position.y=.85;g.add(bar);g.position.set(x,0,z);compound.add(g)}
+for(let i=0;i<5;i++)bike(-3+i*1.5,5);
+// Nearby rural homes and trees along the route
+for(let z=-50;z>-1100;z-=65){building(-18,z,8,7,4,0xe4d5b8);building(20,z-25,7,7,3.6,0xd9c6a6);tree(-28,z-15);tree(28,z-45)}
+// Shop at the T-junction and skewers stall
+building(-158,-195,10,8,4,0xe8cfa7);let sign=new THREE.Mesh(new THREE.BoxGeometry(8,.8,.15),mat(0xf4df9d));sign.position.set(-158,3.4,-190);scene.add(sign);
+// Cemetery entrance near the end of the long stretch
+building(110,-990,9,6,3.5,0xbab5a4);let gate=new THREE.Mesh(new THREE.BoxGeometry(8,2.5,.25),mat(0x444444));gate.position.set(100,1.25,-1000);scene.add(gate);
+// School at destination
+building(-100,-1045,24,12,7,0xe8d8b7);let schoolSign=new THREE.Mesh(new THREE.BoxGeometry(13,1,.2),mat(0xe8d5a0));schoolSign.position.set(-100,5,-1038);scene.add(schoolSign);
+// Player bicycle cockpit and camera
+const cockpit=new THREE.Group();camera.add(cockpit);scene.add(camera);let handle=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.4),mat(0x222222));handle.rotation.z=Math.PI/2;handle.position.set(0,-.62,-1.1);cockpit.add(handle);for(let x of [-.7,.7]){let grip=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.3),mat(0x111111));grip.rotation.z=Math.PI/2;grip.position.set(x,-.62,-1.1);cockpit.add(grip)}let stem=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.65),mat(0x333333));stem.position.set(0,-.85,-1.1);cockpit.add(stem);
+let pos=new THREE.Vector3(0,1.65,9),yaw=0,speed=0,keys={},distance=0,started=false;camera.position.copy(pos);camera.rotation.order='YXZ';
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);let dragging=false,lastX=0,lastY=0;addEventListener('mousedown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY});addEventListener('mouseup',()=>dragging=false);addEventListener('mousemove',e=>{if(dragging&&started){yaw-=(e.clientX-lastX)*.003;camera.rotation.x=Math.max(-.7,Math.min(.7,camera.rotation.x-(e.clientY-lastY)*.002))}lastX=e.clientX;lastY=e.clientY});
+document.querySelector('#play').onclick=()=>{started=true;document.querySelector('#start').style.display='none'};
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);if(started){let accel=keys['w']?12:keys['s']?-8:0;speed+=accel*dt;speed*=keys[' ']?.88:.985;speed=Math.max(-5,Math.min(keys['shift']?24:13,speed));if(Math.abs(speed)>.1){yaw+=(keys['a']?1:keys['d']?-1:0)*dt*speed*.018;let old=pos.clone();pos.x-=Math.sin(yaw)*speed*dt;pos.z-=Math.cos(yaw)*speed*dt;distance+=pos.distanceTo(old);camera.position.copy(pos);camera.rotation.y=yaw;document.querySelector('#distance').textContent=Math.round(distance)+' m';let p='Đường đi';if(pos.z> -10)p='Nhà trọ số 1';else if(pos.z>-210)p='Đường thẳng 200m';else if(pos.x< -20&&pos.z>-400)p='Rẽ trái – 300m';else if(pos.z>-1000)p='Đường đến nghĩa trang';else p='Trường học';document.querySelector('#place').textContent=p}}
+renderer.render(scene,camera)}animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
